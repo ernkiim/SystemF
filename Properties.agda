@@ -1,8 +1,11 @@
 module Properties where
 
 open import Function
+open import Data.Nat as ℕ using (ℕ; zero; suc)
 open import Data.String
 open import Data.Bool hiding (_≟_)
+open import Data.Sum
+open import Data.Product
 open import Relation.Nullary.Decidable
 open import Relation.Nullary.Negation
 open import Relation.Binary.PropositionalEquality
@@ -54,12 +57,20 @@ weaken δ ρ (τ-Λ D) = τ-Λ (weaken (λ{ zero → zero ; (suc n) → suc (δ 
 weaken δ ρ (τ-＠ D t) = τ-＠ (weaken δ ρ D) (weaken-type δ t)
 
 -- Substitution of types preserves types
-subst-τ : Δ ⊢ τ type → (Δ , t type) , Γ ⊢ e′ ⦂ τ′ → Δ , ([ τ /ₜ t ]C Γ) ⊢ ([ τ /ₜ t ] e′) ⦂ [ τ /ₜ t ]ₜ τ′
-subst-τ t (τ-v x) = {!!}
-subst-τ t (τ-λ x D) = {!!}
-subst-τ t (τ-· D D₁) = {!!}
-subst-τ t (τ-Λ D) = {!!}
-subst-τ t (τ-＠ D x) = {!!}
+subst-τ : Δ ⊢ τ type → (Δ , t type) , Γ ⊢ e′ ⦂ τ′ → Δ , ([ τ /ₜ t ]C Γ) ⊢ ([ τ /ₜ t ] e′) ⦂ ([ τ /ₜ t ]ₜ τ′)
+subst-τ t (τ-v zero) = τ-v zero
+subst-τ t (τ-v (suc ≢₁ n)) = τ-v (suc ≢₁ (lemma n)) where
+  lemma : ∀ {Γ x t τ τ′} → Γ ∋ x ⦂ τ′ → [ τ /ₜ t ]C Γ ∋ x ⦂ [ τ /ₜ t ]ₜ τ′
+  lemma zero = zero
+  lemma (suc ≢₁ n) = suc ≢₁ (lemma n)
+subst-τ t (τ-λ t′ D) = τ-λ (subst-type t t′) (subst-τ t D)
+subst-τ t (τ-· D₁ D₂) = τ-· (subst-τ t D₁) (subst-τ t D₂)
+subst-τ {t = t₁} t (τ-Λ {t = t₂} D) with t₁ ≟ t₂
+... | yes refl = {!!}
+... | no t₁≢t₂ = τ-Λ (subst-τ (weaken-type (λ {t₃} → suc) t) (weaken (λ{ zero          → suc zero
+                                                                       ; (suc zero)    → zero
+                                                                       ; (suc (suc n)) → suc (suc n)}) id D))
+subst-τ t (τ-＠ D t′) = {!!}
 
 -- Substitution of closed terms preserves types
 subst-e : Δ , ∅ ⊢ e ⦂ τ → Δ , (Γ , x ⦂ τ) ⊢ e′ ⦂ τ′ → Δ , Γ ⊢ [ e / x ] e′ ⦂ τ′
@@ -79,9 +90,21 @@ subst-e D₁ (τ-· D₂ D₃) = τ-· (subst-e D₁ D₂) (subst-e D₁ D₃)
 subst-e D₁ (τ-Λ D₂) = τ-Λ (subst-e (weaken (λ {t} → suc) id D₁) D₂)
 subst-e D₁ (τ-＠ D₂ t) = τ-＠ (subst-e D₁ D₂) t
 
-
 preservation : e ⦂₀ τ → e ↦ e′ → e′ ⦂₀ τ
-preservation (τ-· (τ-λ t D₁) D₂) (β-λ val) = subst-e D₂ D₁
-preservation (τ-· D₁ D₂) (ξ-·-ₗ D₃) = τ-· (preservation D₁ D₃) D₂
-preservation (τ-· D₁ D₂) (ξ-·-ᵣ x D₃) = τ-· D₁ (preservation D₂ D₃)
-preservation (τ-＠ (τ-Λ D) t) β-Λ = {!!}
+preservation (τ-· (τ-λ _ D₁) D₂) (β-λ _) = subst-e D₂ D₁
+preservation (τ-· D₁ D₂) (ξ-·-ₗ ↦) = τ-· (preservation D₁ ↦) D₂
+preservation (τ-· D₁ D₂) (ξ-·-ᵣ x ↦) = τ-· D₁ (preservation D₂ ↦)
+preservation (τ-＠ (τ-Λ D) t) β-Λ = subst-τ t D
+preservation (τ-＠ D t) (ξ-＠ ↦) = τ-＠ (preservation D ↦) t
+
+progress : e ⦂₀ τ → (e Val) ⊎ ∃[ e′ ] (e ↦ e′)
+progress (τ-λ t D) = inj₁ λ-Val
+progress (τ-Λ D)   = inj₁ Λ-Val
+progress (τ-· {e₁ = e₁} {e₂ = e₂} D₁ D₂) with progress D₁
+... | inj₂ (e′ , ↦) = inj₂ ((e′ · e₂) , ξ-·-ₗ ↦)
+... | inj₁ (λ-Val {e = e}) with progress D₂
+... | inj₂ (e′ , ↦) = inj₂ (((λ⟨ _ ⦂ _ ⟩ e) · e′) , ξ-·-ᵣ λ-Val ↦)
+... | inj₁ val₂ = inj₂ (([ e₂ / _ ] e) , β-λ val₂)
+progress (τ-＠ D t) with progress D
+... | inj₁ Λ-Val = inj₂ (([ _ /ₜ _ ] _) , β-Λ)
+... | inj₂ (e′ , ↦) = inj₂ ((e′ ＠ _) , ξ-＠ ↦)
