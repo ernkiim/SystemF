@@ -120,3 +120,11 @@ data _↦_ : Term → Term → Set where
 
 infix 0 _∋_type _∋_⦂_ _⊢_type _⊢_types _,_⊢_⦂_
 infixl 1 _,_type _,_⦂_ _Val _↦_
+
+infixr 10 _⇒_
+infix  11 ∀⟨_⟩_
+infix  12 tv_
+
+infixl 20 _·_ _＠_
+infix  21 λ⟨_⦂_⟩_ Λ⟨_⟩_
+infix  22 v_

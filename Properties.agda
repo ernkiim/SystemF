@@ -57,19 +57,19 @@ weaken δ ρ (τ-Λ D) = τ-Λ (weaken (λ{ zero → zero ; (suc n) → suc (δ 
 weaken δ ρ (τ-＠ D t) = τ-＠ (weaken δ ρ D) (weaken-type δ t)
 
 -- Substitution of types preserves types
-subst-τ : Δ ⊢ τ type → (Δ , t type) , Γ ⊢ e′ ⦂ τ′ → Δ , ([ τ /ₜ t ]C Γ) ⊢ ([ τ /ₜ t ] e′) ⦂ ([ τ /ₜ t ]ₜ τ′)
+subst-τ : ∅ ⊢ τ type → (Δ , t type) , Γ ⊢ e′ ⦂ τ′ → Δ , ([ τ /ₜ t ]C Γ) ⊢ ([ τ /ₜ t ] e′) ⦂ ([ τ /ₜ t ]ₜ τ′)
 subst-τ t (τ-v zero) = τ-v zero
 subst-τ t (τ-v (suc ≢₁ n)) = τ-v (suc ≢₁ (lemma n)) where
   lemma : ∀ {Γ x t τ τ′} → Γ ∋ x ⦂ τ′ → [ τ /ₜ t ]C Γ ∋ x ⦂ [ τ /ₜ t ]ₜ τ′
   lemma zero = zero
   lemma (suc ≢₁ n) = suc ≢₁ (lemma n)
-subst-τ t (τ-λ t′ D) = τ-λ (subst-type t t′) (subst-τ t D)
+subst-τ t (τ-λ t′ D) = τ-λ (subst-type (weaken-type (λ ()) t) t′) (subst-τ t D)
 subst-τ t (τ-· D₁ D₂) = τ-· (subst-τ t D₁) (subst-τ t D₂)
 subst-τ {t = t₁} t (τ-Λ {t = t₂} D) with t₁ ≟ t₂
-... | yes refl = {!!}
-... | no t₁≢t₂ = τ-Λ (subst-τ (weaken-type (λ {t₃} → suc) t) (weaken (λ{ zero          → suc zero
-                                                                       ; (suc zero)    → zero
-                                                                       ; (suc (suc n)) → suc (suc n)}) id D))
+... | yes refl = τ-Λ {!!}
+... | no t₁≢t₂ = τ-Λ (subst-τ (weaken-type (λ ()) t) (weaken (λ{ zero          → suc zero
+                                                               ; (suc zero)    → zero
+                                                               ; (suc (suc n)) → suc (suc n)}) id D))
 subst-τ t (τ-＠ D t′) = {!!}
 
 -- Substitution of closed terms preserves types
@@ -94,8 +94,8 @@ preservation : e ⦂₀ τ → e ↦ e′ → e′ ⦂₀ τ
 preservation (τ-· (τ-λ _ D₁) D₂) (β-λ _) = subst-e D₂ D₁
 preservation (τ-· D₁ D₂) (ξ-·-ₗ ↦) = τ-· (preservation D₁ ↦) D₂
 preservation (τ-· D₁ D₂) (ξ-·-ᵣ x ↦) = τ-· D₁ (preservation D₂ ↦)
-preservation (τ-＠ (τ-Λ D) t) β-Λ = subst-τ t D
 preservation (τ-＠ D t) (ξ-＠ ↦) = τ-＠ (preservation D ↦) t
+preservation (τ-＠ (τ-Λ D) t) β-Λ = subst-τ t D
 
 progress : e ⦂₀ τ → (e Val) ⊎ ∃[ e′ ] (e ↦ e′)
 progress (τ-λ t D) = inj₁ λ-Val
